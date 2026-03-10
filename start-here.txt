@@ -1,0 +1,11 @@
+refer the discussions in AiReadyAssessment.com\docs\discussion.md and planning/Autopilot Digital Product Ideas.md
+
+this app in AiReadyAssessment.com\ai-ready-assessment was created based on discussion.md and we have not yet incorporated further tools discussed in discussion.md and Autopilot ideas
+
+TODO:
+
+1. Get the context from md files
+2. understand the repo structure and brand it under Alamia (replace any references to Google AI Studio etc or other third party with Alamia)
+3. boost the repo workspace with right MCP tools and any artifacts for your self (follow instruction in Environment-Setup.txt)
+
+4. all the code and relevant artifacts from step 3 above must go inside the project repo (ai-ready-assessment) which will eventually be initialized/pushed to GH
