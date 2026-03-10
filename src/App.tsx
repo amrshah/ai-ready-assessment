@@ -78,7 +78,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[#050505]">
+    <div className="min-h-screen bg-[#050505] selection:bg-emerald-500/30">
       {state === 'landing' && <LandingPage onStart={handleStart} />}
       {state === 'assessment' && <Assessment onComplete={handleAssessmentComplete} />}
       {state === 'lead-form' && <LeadForm onSubmit={handleLeadSubmit} />}

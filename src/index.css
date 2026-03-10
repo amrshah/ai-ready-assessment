@@ -5,35 +5,35 @@
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
 }
 
-html,
-body,
-#root {
-  background-color: #050505 !important;
-  color: white !important;
-  margin: 0;
-  padding: 0;
-  min-height: 100%;
-}
-
-body {
-  font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+@layer base {
+  html {
+    color-scheme: dark;
+    background-color: #050505;
+    color: #ffffff;
+  }
+  body {
+    background-color: #050505;
+    color: #ffffff;
+    @apply antialiased;
+    margin: 0;
+    padding: 0;
+  }
 }
 
 @media print {
   @page {
     margin: 15mm;
+    size: auto;
   }
 
   body {
-    background: white !important;
+    background-color: white !important;
     color: black !important;
-    font-size: 12pt;
+    font-size: 11pt;
   }
 
   .min-h-screen {
-    background: white !important;
+    background-color: white !important;
     color: black !important;
     padding: 0 !important;
   }
@@ -49,9 +49,9 @@ body {
 
   /* Keep cards together and styled for print */
   .bg-zinc-900, .bg-zinc-950, .bg-emerald-500, .p-6, .p-8, .rounded-3xl, .rounded-2xl {
-    background: #f8f8f8 !important;
-    border: 1px solid #e0e0e0 !important;
-    color: #333 !important;
+    background: #fdfdfd !important;
+    border: 1px solid #ddd !important;
+    color: #1a1a1a !important;
     page-break-inside: avoid !important;
     break-inside: avoid !important;
     margin-bottom: 20px !important;
@@ -59,7 +59,7 @@ body {
   }
 
   .text-emerald-500, .text-emerald-400 {
-    color: #059669 !important;
+    color: #047857 !important;
   }
 
   .text-white {
@@ -67,16 +67,16 @@ body {
   }
 
   .text-zinc-400, .text-zinc-500, .text-zinc-300 {
-    color: #666 !important;
+    color: #4b5563 !important;
   }
 
   /* Ensure progress bars are visible */
   .bg-zinc-950 {
-    background: #eee !important;
+    background: #f3f4f6 !important;
   }
 
   .bg-emerald-500 {
-    background: #059669 !important;
+    background: #047857 !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
