@@ -67,7 +67,9 @@ async function startServer() {
   const PORT = 3000;
 
   // Security Middleware
-  app.use(helmet());
+  app.use(helmet({
+    contentSecurityPolicy: process.env.NODE_ENV === "production" ? true : false,
+  }));
   app.use(cors({
     origin: process.env.NODE_ENV === 'production' ? process.env.CLIENT_ORIGIN : true,
     methods: ['GET', 'POST', 'DELETE'],
