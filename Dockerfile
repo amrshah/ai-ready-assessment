@@ -20,11 +20,12 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm install --omit=dev
 
-# Copy built assets and server source
+# Copy built assets and server source for tsx execution
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/server.ts ./server.ts
 COPY --from=build /app/src/lib/bridge ./src/lib/bridge
-COPY --from=build /app/src/types ./src/types
+COPY --from=build /app/src/types.ts ./src/types.ts
+COPY --from=build /app/tsconfig.json ./tsconfig.json
 
 # Ensure data directory for SQLite persistence
 RUN mkdir -p /app/data
