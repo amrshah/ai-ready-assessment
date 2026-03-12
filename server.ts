@@ -46,24 +46,30 @@ async function startServer() {
     const { pillarScores, totalScore, readinessLevel, context } = req.body;
     
     const prompt = `
-      You are an Expert AI Product Architect and Productivity Specialist. Analyze the following AI Readiness Assessment results for a professional:
-      
-      Total Score: ${totalScore}%
-      Readiness Level: ${readinessLevel}
-      
-      Pillar Scores:
-      - Strategy: ${pillarScores.Strategy}%
-      - Skills: ${pillarScores.Skills}%
-      - Workflows: ${pillarScores.Workflows}%
-      - Systems: ${pillarScores.Systems}%
-      
-      Context:
-      - Role: ${context.role || 'Not specified'}
+      You are the Lead AI Strategist at Alamia. Analyze this professional's AI Readiness Assessment based on the Alamia AI Maturity Framework.
+
+      USER PROFILE:
+      - Role: ${context.role || 'Professional'}
       - Industry: ${context.industry || 'Not specified'}
+
+      PERFORMANCE DATA:
+      - Total Score: ${totalScore}%
+      - Maturity Tier: ${readinessLevel}
       
-      Provide a professional diagnostic report focused on productivity.
-      
-      RETURN THE RESPONSE STRICTLY AS A JSON OBJECT with the following structure:
+      PILLAR BREAKDOWN:
+      - Strategy (Alignment & Use Case Clarity): ${pillarScores.Strategy}%
+      - Skills (Prompting & Output Evaluation): ${pillarScores.Skills}%
+      - Workflows (Daily Integration & Repeatability): ${pillarScores.Workflows}%
+      - Systems (Tools, Governance & Infrastructure): ${pillarScores.Systems}%
+
+      DIAGNOSTIC REQUIREMENTS:
+      1. Provide a concise maturity summary (2-3 sentences).
+      2. Identify 3 specific strengths based on their highest pillars.
+      3. Identify 2 critical "Technical & Strategy Gaps" where they are losing productivity.
+      4. List 3 high-impact "Next Actions" that can be automated within 24 hours.
+      5. Recommend a product from the Alamia Ecosystem (e.g., AI Workflow Library, Prompt Engineering Playbook, or Startup Idea Validation Kit) that matches their specific gaps.
+
+      RETURN THE RESPONSE STRICTLY AS A VALID JSON OBJECT:
       {
         "readiness_level": "string",
         "summary": "string",
@@ -80,25 +86,31 @@ async function startServer() {
     `;
 
     try {
-      console.log("Sending prompt to Alamia AI...");
+      console.log(`[Alamia AI] Analyzing assessment for ${context.role || 'User'}...`);
       const text = await getAIAnalysis(prompt);
-      console.log("AI raw response:", text);
       
       if (!text) {
-        throw new Error("Empty response from AI engine");
+        throw new Error("Empty response from AI bridge");
+      }
+
+      // Robust JSON extraction
+      let jsonContent = text;
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        jsonContent = jsonMatch[0];
       }
 
       try {
-        const cleanedText = text.replace(/```json\n?|```/g, "").trim();
-        res.json(JSON.parse(cleanedText));
+        const parsedData = JSON.parse(jsonContent);
+        res.json(parsedData);
       } catch (parseError: any) {
-        console.error("JSON Parse Error:", parseError, "Raw text:", text);
-        throw new Error(`Failed to parse AI response: ${parseError.message}`);
+        console.error("JSON Parse Error. Raw response:", text);
+        throw new Error("AI generated an invalid report format. Please retry.");
       }
     } catch (error: any) {
-      console.error("AI API error details:", error);
+      console.error("[Internal Error] AI Analysis failed:", error.message);
       res.status(500).json({ 
-        error: "Failed to generate AI insights",
+        error: "Diagnostic failed",
         details: error.message 
       });
     }

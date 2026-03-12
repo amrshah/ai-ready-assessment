@@ -20,6 +20,8 @@ import {
   Copy,
   Check
 } from 'lucide-react';
+import html2canvas from 'html2canvas';
+import { jsPDF } from 'jspdf';
 // Native browser print is used for maximum CSS fidelity and reliability
 
 interface ResultsDashboardProps {
@@ -32,6 +34,7 @@ export const ResultsDashboard: React.FC<ResultsDashboardProps> = ({ result, user
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const reportRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -83,8 +86,49 @@ export const ResultsDashboard: React.FC<ResultsDashboardProps> = ({ result, user
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const downloadPdf = () => {
-    window.print();
+  const downloadPdf = async () => {
+    if (!reportRef.current) return;
+    
+    setIsExporting(true);
+    
+    try {
+      // Small timeout to ensure any hover states or micro-animations are settled
+      await new Promise(resolve => setTimeout(resolve, 300));
+
+      const canvas = await html2canvas(reportRef.current, {
+        scale: 2, // Higher quality
+        useCORS: true,
+        backgroundColor: '#050505',
+        logging: false,
+        onclone: (clonedDoc) => {
+          // Additional cleanup on the clone
+          const noExportElements = clonedDoc.querySelectorAll('.no-export, .no-print');
+          noExportElements.forEach(el => (el as HTMLElement).style.display = 'none');
+          
+          // Ensure the root container in the clone doesn't have extra padding that might cause breaks
+          const reportEl = clonedDoc.querySelector('[data-report-root="true"]') as HTMLElement;
+          if (reportEl) {
+            reportEl.style.padding = '0';
+          }
+        }
+      });
+      
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'px',
+        format: [canvas.width / 2, canvas.height / 2] // Scale back to normal size
+      });
+      
+      pdf.addImage(imgData, 'PNG', 0, 0, canvas.width / 2, canvas.height / 2);
+      pdf.save(`Alamia-AI-Readiness-${user.name.replace(/\s+/g, '-')}.pdf`);
+    } catch (err) {
+      console.error('PDF Generation Error:', err);
+      // Fallback to print if canvas fails
+      window.print();
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   const getLevelColor = (level: string) => {
@@ -99,9 +143,9 @@ export const ResultsDashboard: React.FC<ResultsDashboardProps> = ({ result, user
 
   return (
     <div className="min-h-screen bg-[#050505] text-white p-4 sm:p-6 md:p-12">
-      <div className="max-w-6xl mx-auto" ref={reportRef}>
+      <div className="max-w-6xl mx-auto" ref={reportRef} data-report-root="true">
         {/* Header */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-8 md:mb-12">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-8 md:mb-12 no-export">
           <div>
             <h1 className="text-2xl md:text-3xl font-bold mb-2">Your AI Readiness Score</h1>
             <p className="text-zinc-400 text-sm md:text-base">Analysis for <span className="text-white font-medium">{user.name}</span> • {new Date().toLocaleDateString()}</p>
@@ -109,12 +153,16 @@ export const ResultsDashboard: React.FC<ResultsDashboardProps> = ({ result, user
             <div className="flex flex-col items-end gap-1 no-print">
               <button
                 onClick={downloadPdf}
-                className="flex items-center justify-center gap-2 px-6 py-3 bg-white text-black font-bold rounded-xl hover:bg-zinc-200 transition-colors w-full sm:w-auto"
+                disabled={isExporting}
+                className="flex items-center justify-center gap-2 px-6 py-3 bg-white text-black font-bold rounded-xl hover:bg-zinc-200 transition-colors w-full sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <Download className="w-5 h-5" />
-                Print / Save PDF
+                {isExporting ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
+                  <Download className="w-5 h-5" />
+                )}
+                {isExporting ? 'Generating...' : 'Save AI Report (PDF)'}
               </button>
-              <p className="text-[10px] text-zinc-500 font-medium">Select "Save as PDF" in the print dialog</p>
             </div>
         </div>
 

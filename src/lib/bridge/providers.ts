@@ -71,8 +71,8 @@ export class GeminiProvider implements AIProvider {
   async analyze(prompt: string): Promise<string> {
     if (!this.apiKey) throw new Error("GEMINI_API_KEY missing");
     
-    const genAI = new GoogleGenAI(this.apiKey) as any;
-    const model = genAI.getGenerativeModel({ model: "gemini-3-flash-preview" });
+    const genAI = new (GoogleGenAI as any)(this.apiKey);
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
     const result = await model.generateContent(prompt);
     return result.response.text();
   }
