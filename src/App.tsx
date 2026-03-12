@@ -96,9 +96,18 @@ const AssessmentFlow = () => {
     setStep('result');
   };
 
+  const handleRetake = () => {
+    setStep('quest');
+    setResponses({});
+    setUser(null);
+    setResult(null);
+    sessionStorage.removeItem('last_assessment_result');
+    sessionStorage.removeItem('last_assessment_user');
+  };
+
   if (step === 'quest') return <Assessment onComplete={handleAssessmentComplete} />;
   if (step === 'lead') return <LeadForm onSubmit={handleLeadSubmit} />;
-  if (step === 'result' && result && user) return <ResultsDashboard result={result} user={user} />;
+  if (step === 'result' && result && user) return <ResultsDashboard result={result} user={user} onRetake={handleRetake} />;
   
   return <Navigate to="/" />;
 };

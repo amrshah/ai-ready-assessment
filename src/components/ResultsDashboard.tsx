@@ -18,7 +18,8 @@ import {
   Link as LinkIcon,
   Download,
   Copy,
-  Check
+  Check,
+  RotateCcw
 } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
@@ -27,9 +28,10 @@ import { jsPDF } from 'jspdf';
 interface ResultsDashboardProps {
   result: AssessmentResult;
   user: UserInfo;
+  onRetake: () => void;
 }
 
-export const ResultsDashboard: React.FC<ResultsDashboardProps> = ({ result, user }) => {
+export const ResultsDashboard: React.FC<ResultsDashboardProps> = ({ result, user, onRetake }) => {
   const [insights, setInsights] = useState<AIInsights | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -151,7 +153,14 @@ export const ResultsDashboard: React.FC<ResultsDashboardProps> = ({ result, user
             <h1 className="text-2xl md:text-3xl font-bold mb-2">Your AI Readiness Score</h1>
             <p className="text-zinc-400 text-sm md:text-base">Analysis for <span className="text-white font-medium">{user.name}</span> • {new Date().toLocaleDateString()}</p>
           </div>
-            <div className="flex flex-col items-end gap-1 no-print">
+            <div className="flex flex-col items-end gap-3 no-print">
+              <button
+                onClick={onRetake}
+                className="flex items-center justify-center gap-2 px-6 py-3 bg-zinc-900 text-white border border-zinc-800 font-bold rounded-xl hover:bg-zinc-800 transition-colors w-full sm:w-auto"
+              >
+                <RotateCcw className="w-5 h-5" />
+                Retake Assessment
+              </button>
               <button
                 onClick={downloadPdf}
                 disabled={isExporting}
