@@ -81,7 +81,7 @@ export class GeminiProvider implements AIProvider {
 export class OllamaProvider implements AIProvider {
   name = "Ollama";
   private host = process.env.OLLAMA_HOST || "http://localhost:11434";
-  private model = process.env.OLLAMA_MODEL || "llama3";
+  private model = process.env.OLLAMA_MODEL || "deepseek-r1:1.5b";
 
   async analyze(prompt: string): Promise<string> {
     // For Docker environments to reach host Ollama, use host.docker.internal if not specified

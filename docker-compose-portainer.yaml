@@ -12,7 +12,7 @@ services:
       - ADMIN_SECRET=${ADMIN_SECRET}
       - DATABASE_URL=/app/data/leads.db
       - OLLAMA_HOST=${OLLAMA_HOST:-http://host.docker.internal:11434}
-      - OLLAMA_MODEL=${OLLAMA_MODEL:-llama3}
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-deepseek-r1:1.5b}
     volumes:
       - lead_data:/app/data
     extra_hosts:
