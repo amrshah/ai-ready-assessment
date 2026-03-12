@@ -67,9 +67,16 @@ async function startServer() {
   const PORT = 3000;
 
   // Security Middleware
-  app.use(helmet({
-    contentSecurityPolicy: process.env.NODE_ENV === "production" ? true : false,
-  }));
+  if (process.env.NODE_ENV === "production") {
+    app.use(helmet());
+  } else {
+    // Relaxed security for local development
+    app.use(helmet({
+      contentSecurityPolicy: false,
+      crossOriginEmbedderPolicy: false,
+    }));
+  }
+
   app.use(cors({
     origin: process.env.NODE_ENV === 'production' ? process.env.CLIENT_ORIGIN : true,
     methods: ['GET', 'POST', 'DELETE'],
@@ -190,13 +197,28 @@ async function startServer() {
     }
   });
 
-  // Vite middleware for development
+  // Frontend delivery
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",
     });
+    
     app.use(vite.middlewares);
+
+    app.get("*", async (req, res, next) => {
+      const url = req.originalUrl;
+      if (url.startsWith('/api')) return next();
+      
+      try {
+        let template = fs.readFileSync(path.resolve(".", "index.html"), "utf-8");
+        template = await vite.transformIndexHtml(url, template);
+        res.status(200).set({ "Content-Type": "text/html" }).end(template);
+      } catch (e: any) {
+        vite.ssrFixStacktrace(e);
+        res.status(500).end(e.message);
+      }
+    });
   } else {
     app.use(express.static("dist"));
     app.get("*", (req, res) => {
