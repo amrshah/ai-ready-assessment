@@ -1,12 +1,25 @@
-import express from "express";
+import express, { Request, Response, NextFunction } from "express";
 import { createServer as createViteServer } from "vite";
 import Database from "better-sqlite3";
 import dotenv from "dotenv";
+import cors from "cors";
+import helmet from "helmet";
+import rateLimit from "express-rate-limit";
 import { getAIAnalysis } from "./src/lib/bridge/providers";
+
+import fs from "fs";
+import path from "path";
 
 dotenv.config();
 
 const DB_PATH = process.env.DATABASE_URL || "leads.db";
+
+// Ensure data directory exists if path includes subdirectories
+const dbDir = path.dirname(DB_PATH);
+if (dbDir !== "." && !fs.existsSync(dbDir)) {
+  fs.mkdirSync(dbDir, { recursive: true });
+}
+
 const db = new Database(DB_PATH);
 db.exec(`
   CREATE TABLE IF NOT EXISTS leads (
@@ -21,28 +34,106 @@ db.exec(`
   )
 `);
 
+// Authentication Middleware
+const adminAuth = (req: Request, res: Response, next: NextFunction) => {
+  const ADMIN_SECRET = process.env.ADMIN_SECRET || "AlamiaAdmin2026";
+  const authHeader = req.headers.authorization;
+  if (authHeader === `Bearer ${ADMIN_SECRET}`) {
+    next();
+  } else {
+    console.warn(`[Security] Unauthorized access blocked for ${req.path}`);
+    res.status(401).json({ 
+      success: false, 
+      error: { code: "UNAUTHORIZED", message: "Invalid credentials" } 
+    });
+  }
+};
+
+// Rate Limiters
+const assessmentLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10, // Limit each IP to 10 assessment submissions per window
+  message: { success: false, error: { code: "TOO_MANY_REQUESTS", message: "Too many assessments. Please try again later." } }
+});
+
+const aiAnalysisLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 20, // Limit each IP to 20 AI diagnostic requests per hour
+  message: { success: false, error: { code: "TOO_MANY_REQUESTS", message: "AI diagnostic limit reached. Please try again in an hour." } }
+});
+
 async function startServer() {
   const app = express();
   const PORT = 3000;
 
+  // Security Middleware
+  app.use(helmet());
+  app.use(cors({
+    origin: process.env.NODE_ENV === 'production' ? process.env.CLIENT_ORIGIN : true,
+    methods: ['GET', 'POST', 'DELETE'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+  }));
   app.use(express.json());
 
   // API Routes
-  app.post("/api/leads", (req, res) => {
+  app.post("/api/leads", assessmentLimiter, (req, res) => {
     const { name, email, role, industry, scores, sendReport } = req.body;
     try {
       const stmt = db.prepare(
         "INSERT OR REPLACE INTO leads (name, email, role, industry, scores, send_report) VALUES (?, ?, ?, ?, ?, ?)"
       );
-      stmt.run(name, email, role, industry, JSON.stringify(scores), sendReport ? 1 : 0);
-      res.json({ success: true });
-    } catch (error) {
-      console.error("Database error:", error);
-      res.status(500).json({ error: "Failed to save lead" });
+      const result = stmt.run(name, email, role, industry, JSON.stringify(scores), sendReport ? 1 : 0);
+      res.json({ 
+        success: true, 
+        data: { id: result.lastInsertRowid, email } 
+      });
+    } catch (error: any) {
+      console.error("[DB Error] Lead submission failed:", error.message);
+      res.status(500).json({ 
+        success: false, 
+        error: { code: "DB_ERROR", message: "System failed to save your assessment data." } 
+      });
     }
   });
 
-  app.post("/api/analyze", async (req, res) => {
+  app.get("/api/admin/leads", adminAuth, (req, res) => {
+    try {
+      const leads = db.prepare("SELECT * FROM leads ORDER BY created_at DESC").all() as any[];
+      const formattedLeads = leads.map(l => ({
+        ...l,
+        scores: JSON.parse(l.scores)
+      }));
+      res.json({ success: true, data: formattedLeads });
+    } catch (error: any) {
+      res.status(500).json({ 
+        success: false, 
+        error: { code: "DB_READ_ERROR", message: "Database retrieval failed" } 
+      });
+    }
+  });
+
+  app.delete("/api/admin/leads/:id", adminAuth, (req, res) => {
+    const { id } = req.params;
+    try {
+      const stmt = db.prepare("DELETE FROM leads WHERE id = ?");
+      const result = stmt.run(id);
+      if (result.changes > 0) {
+        res.json({ success: true, data: { deleted_id: id } });
+      } else {
+        res.status(404).json({ 
+          success: false, 
+          error: { code: "NOT_FOUND", message: "Lead record not found" } 
+        });
+      }
+    } catch (error: any) {
+      res.status(500).json({ 
+        success: false, 
+        error: { code: "DB_DELETE_ERROR", message: "Failed to remove lead record" } 
+      });
+    }
+  });
+
+  app.post("/api/analyze", aiAnalysisLimiter, async (req, res) => {
     const { pillarScores, totalScore, readinessLevel, context } = req.body;
     
     const prompt = `
@@ -57,17 +148,10 @@ async function startServer() {
       - Maturity Tier: ${readinessLevel}
       
       PILLAR BREAKDOWN:
-      - Strategy (Alignment & Use Case Clarity): ${pillarScores.Strategy}%
-      - Skills (Prompting & Output Evaluation): ${pillarScores.Skills}%
-      - Workflows (Daily Integration & Repeatability): ${pillarScores.Workflows}%
-      - Systems (Tools, Governance & Infrastructure): ${pillarScores.Systems}%
-
-      DIAGNOSTIC REQUIREMENTS:
-      1. Provide a concise maturity summary (2-3 sentences).
-      2. Identify 3 specific strengths based on their highest pillars.
-      3. Identify 2 critical "Technical & Strategy Gaps" where they are losing productivity.
-      4. List 3 high-impact "Next Actions" that can be automated within 24 hours.
-      5. Recommend a product from the Alamia Ecosystem (e.g., AI Workflow Library, Prompt Engineering Playbook, or Startup Idea Validation Kit) that matches their specific gaps.
+      - Strategy: ${pillarScores.Strategy}%
+      - Skills: ${pillarScores.Skills}%
+      - Workflows: ${pillarScores.Workflows}%
+      - Systems: ${pillarScores.Systems}%
 
       RETURN THE RESPONSE STRICTLY AS A VALID JSON OBJECT:
       {
@@ -86,32 +170,20 @@ async function startServer() {
     `;
 
     try {
-      console.log(`[Alamia AI] Analyzing assessment for ${context.role || 'User'}...`);
       const text = await getAIAnalysis(prompt);
-      
-      if (!text) {
-        throw new Error("Empty response from AI bridge");
-      }
+      if (!text) throw new Error("AI bridge provided empty pulse.");
 
-      // Robust JSON extraction
       let jsonContent = text;
       const jsonMatch = text.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        jsonContent = jsonMatch[0];
-      }
+      if (jsonMatch) jsonContent = jsonMatch[0];
 
-      try {
-        const parsedData = JSON.parse(jsonContent);
-        res.json(parsedData);
-      } catch (parseError: any) {
-        console.error("JSON Parse Error. Raw response:", text);
-        throw new Error("AI generated an invalid report format. Please retry.");
-      }
+      const parsedData = JSON.parse(jsonContent);
+      res.json({ success: true, data: parsedData });
     } catch (error: any) {
-      console.error("[Internal Error] AI Analysis failed:", error.message);
+      console.error("[AI Error]", error.message);
       res.status(500).json({ 
-        error: "Diagnostic failed",
-        details: error.message 
+        success: false, 
+        error: { code: "AI_FAILURE", message: "AI diagnostic generation interrupted", details: error.message } 
       });
     }
   });

@@ -51,12 +51,13 @@ export const ResultsDashboard: React.FC<ResultsDashboardProps> = ({ result, user
           })
         });
 
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.details || 'Failed to fetch AI insights');
+        const apiResult = await response.json();
+        
+        if (response.ok && apiResult.success) {
+          setInsights(apiResult.data);
+        } else {
+          throw new Error(apiResult.error?.message || 'Failed to fetch AI insights');
         }
-        const data = await response.json();
-        setInsights(data);
       } catch (err: any) {
         console.error(err);
         setError(`Diagnostic Error: ${err.message}`);
@@ -235,7 +236,9 @@ export const ResultsDashboard: React.FC<ResultsDashboardProps> = ({ result, user
                   <span className={`inline-block px-4 py-1 rounded-full border text-xs md:text-sm font-bold mb-4 ${getLevelColor(result.readinessLevel)}`}>
                     {result.readinessLevel}
                   </span>
-                  <h2 className="text-2xl md:text-3xl font-bold mb-2">You are an {result.readinessLevel}</h2>
+                  <h2 className="text-2xl md:text-3xl font-bold mb-2">
+                    You are {['A', 'E', 'I', 'O', 'U'].includes(result.readinessLevel[0]) ? 'an' : 'a'} {result.readinessLevel}
+                  </h2>
                   <p className="text-emerald-400 font-bold text-base md:text-lg mb-4">
                     You are ahead of {result.percentile}% of users who took this test.
                   </p>

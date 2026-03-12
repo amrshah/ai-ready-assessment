@@ -125,7 +125,7 @@ export const LeadForm: React.FC<LeadFormProps> = ({ onSubmit }) => {
           </button>
         </form>
 
-        <p className="mt-6 text-center text-[10px] text-zinc-600 uppercase tracking-widest">
+        <p className="mt-6 text-center text-[10px] text-zinc-600 uppercase tracking-widest no-print">
           Your data is secure and will never be shared.
         </p>
       </motion.div>

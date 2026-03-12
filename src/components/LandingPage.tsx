@@ -1,16 +1,13 @@
 import React from 'react';
 import { motion } from 'motion/react';
+import { Link } from 'react-router-dom';
 import { ArrowRight, CheckCircle2, Zap, Target, Layers, Cpu } from 'lucide-react';
 
-interface LandingPageProps {
-  onStart: () => void;
-}
-
-export const LandingPage: React.FC<LandingPageProps> = ({ onStart }) => {
+export const LandingPage: React.FC = () => {
   return (
-    <div className="min-h-screen bg-[#050505] text-white font-sans selection:bg-emerald-500/30">
+    <div className="text-white font-sans selection:bg-emerald-500/30">
       {/* Hero Section */}
-      <section className="relative pt-32 pb-20 px-6 overflow-hidden">
+      <section className="relative pt-20 pb-20 px-6 overflow-hidden">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-emerald-500/10 via-transparent to-transparent blur-3xl -z-10" />
 
         <div className="max-w-5xl mx-auto text-center">
@@ -31,13 +28,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart }) => {
             </p>
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <button
-                onClick={onStart}
+              <Link
+                to="/assessment"
                 className="group relative px-8 py-4 bg-emerald-500 hover:bg-emerald-400 text-black font-semibold rounded-xl transition-all duration-200 flex items-center gap-2 overflow-hidden"
               >
                 Start the AI Readiness Test
                 <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-              </button>
+              </Link>
               <button className="px-8 py-4 bg-zinc-900 hover:bg-zinc-800 text-white font-semibold rounded-xl border border-zinc-800 transition-all duration-200">
                 Learn how scoring works
               </button>
@@ -163,16 +160,16 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart }) => {
           <p className="text-zinc-400 mb-10 text-lg">
             Join 2,500+ professionals who have used this assessment to guide their AI adoption journey.
           </p>
-          <button
-            onClick={onStart}
-            className="px-10 py-5 bg-emerald-500 hover:bg-emerald-400 text-black font-bold rounded-xl transition-all shadow-lg shadow-emerald-500/20"
+          <Link
+            to="/assessment"
+            className="inline-block px-10 py-5 bg-emerald-500 hover:bg-emerald-400 text-black font-bold rounded-xl transition-all shadow-lg shadow-emerald-500/20"
           >
             Start the Assessment Now
-          </button>
+          </Link>
         </div>
       </section>
 
-      <footer className="py-12 px-6 border-t border-zinc-900 text-center text-zinc-600 text-sm">
+      <footer className="py-12 px-6 border-t border-zinc-900 text-center text-zinc-600 text-sm no-print">
         <p>© 2026 AI Ready Assessment. All rights reserved.</p>
       </footer>
     </div>

@@ -1,18 +1,32 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, useNavigate, Navigate } from 'react-router-dom';
+import { Header } from './components/Header';
 import { LandingPage } from './components/LandingPage';
 import { Assessment } from './components/Assessment';
 import { LeadForm } from './components/LeadForm';
 import { ResultsDashboard } from './components/ResultsDashboard';
+import { AdminDashboard } from './components/AdminDashboard';
 import { UserInfo, AssessmentResult, PillarScores } from './types';
 import { QUESTIONS, READINESS_LEVELS } from './constants';
 
-type AppState = 'landing' | 'assessment' | 'lead-form' | 'results';
-
-export default function App() {
-  const [state, setState] = useState<AppState>('landing');
+// Assessment Container to manage internal state flow
+const AssessmentFlow = () => {
+  const navigate = useNavigate();
+  const [step, setStep] = useState<'quest' | 'lead' | 'result'>('quest');
   const [responses, setResponses] = useState<Record<number, number>>({});
   const [user, setUser] = useState<UserInfo | null>(null);
   const [result, setResult] = useState<AssessmentResult | null>(null);
+
+  // Persistence Hydration
+  useEffect(() => {
+    const savedResult = sessionStorage.getItem('last_assessment_result');
+    const savedUser = sessionStorage.getItem('last_assessment_user');
+    if (savedResult && savedUser) {
+      setResult(JSON.parse(savedResult));
+      setUser(JSON.parse(savedUser));
+      setStep('result');
+    }
+  }, []);
 
   const calculateResults = (finalResponses: Record<number, number>): AssessmentResult => {
     const pillarTotals: Record<string, number> = { Strategy: 0, Skills: 0, Workflows: 0, Systems: 0 };
@@ -51,11 +65,9 @@ export default function App() {
     return { totalScore, readinessLevel, pillarScores, percentile: calculatePercentile(totalScore) };
   };
 
-  const handleStart = () => setState('assessment');
-
   const handleAssessmentComplete = (finalResponses: Record<number, number>) => {
     setResponses(finalResponses);
-    setState('lead-form');
+    setStep('lead');
   };
 
   const handleLeadSubmit = async (info: UserInfo) => {
@@ -63,28 +75,48 @@ export default function App() {
     const calculatedResult = calculateResults(responses);
     setResult(calculatedResult);
 
-    // Save lead to Alamia CRM / Backend
+    // Persist for refresh
+    sessionStorage.setItem('last_assessment_result', JSON.stringify(calculatedResult));
+    sessionStorage.setItem('last_assessment_user', JSON.stringify(info));
+
     try {
-      await fetch('/api/leads', {
+      const response = await fetch('/api/leads', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...info, scores: calculatedResult })
       });
+      const apiResult = await response.json();
+      if (!response.ok || !apiResult.success) {
+        console.error('API Error:', apiResult.error?.message);
+      }
     } catch (error) {
-      console.error('Failed to save lead:', error);
+      console.error('Connection failed:', error);
     }
 
-    setState('results');
+    setStep('result');
   };
 
+  if (step === 'quest') return <Assessment onComplete={handleAssessmentComplete} />;
+  if (step === 'lead') return <LeadForm onSubmit={handleLeadSubmit} />;
+  if (step === 'result' && result && user) return <ResultsDashboard result={result} user={user} />;
+  
+  return <Navigate to="/" />;
+};
+
+export default function App() {
   return (
-    <div className="min-h-screen bg-[#050505] selection:bg-emerald-500/30">
-      {state === 'landing' && <LandingPage onStart={handleStart} />}
-      {state === 'assessment' && <Assessment onComplete={handleAssessmentComplete} />}
-      {state === 'lead-form' && <LeadForm onSubmit={handleLeadSubmit} />}
-      {state === 'results' && result && user && (
-        <ResultsDashboard result={result} user={user} />
-      )}
-    </div>
+    <Router>
+      <div className="min-h-screen bg-[#050505] selection:bg-emerald-500/30">
+        <Header />
+        <main className="pt-16 md:pt-20">
+          <Routes>
+            <Route path="/" element={<LandingPage />} />
+            <Route path="/assessment" element={<AssessmentFlow />} />
+            <Route path="/admin" element={<AdminDashboard />} />
+            <Route path="*" element={<Navigate to="/" />} />
+          </Routes>
+        </main>
+      </div>
+    </Router>
   );
 }
