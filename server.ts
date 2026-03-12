@@ -65,23 +65,23 @@ const aiAnalysisLimiter = rateLimit({
 async function startServer() {
   const app = express();
   const PORT = 3000;
+  const isProd = process.env.NODE_ENV === "production";
+
+  console.log(`[Alamia] Starting server in ${isProd ? "PRODUCTION" : "DEVELOPMENT"} mode...`);
 
   // Security Middleware
-  if (process.env.NODE_ENV === "production") {
+  if (isProd) {
     app.use(helmet());
-  } else {
-    // Relaxed security for local development
-    app.use(helmet({
-      contentSecurityPolicy: false,
-      crossOriginEmbedderPolicy: false,
+    app.use(cors({
+      origin: process.env.CLIENT_ORIGIN || true,
+      methods: ['GET', 'POST', 'DELETE'],
+      allowedHeaders: ['Content-Type', 'Authorization']
     }));
+  } else {
+    // Permissive for development
+    app.use(cors());
   }
 
-  app.use(cors({
-    origin: process.env.NODE_ENV === 'production' ? process.env.CLIENT_ORIGIN : true,
-    methods: ['GET', 'POST', 'DELETE'],
-    allowedHeaders: ['Content-Type', 'Authorization']
-  }));
   app.use(express.json());
 
   // API Routes
