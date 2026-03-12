@@ -49,14 +49,16 @@ export class OpenRouterProvider implements AIProvider {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        model: "meta-llama/llama-3.1-405b:free",
+        model: "google/gemini-2.0-flash-lite-preview-02-05:free",
         messages: [{ role: "user", content: prompt }]
       })
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      throw new Error(`OpenRouter API error: ${response.status} - ${errorText}`);
+      // Masking details if it's a 503 or 404 to avoid confusing the end user
+      if (response.status === 404) throw new Error("Model temporarily unavailable");
+      throw new Error(`OpenRouter API error: ${response.status}`);
     }
 
     const data = await response.json();
@@ -71,13 +73,11 @@ export class GeminiProvider implements AIProvider {
   async analyze(prompt: string): Promise<string> {
     if (!this.apiKey) throw new Error("GEMINI_API_KEY missing");
     
-    const ai = new GoogleGenAI({ apiKey: this.apiKey });
-    const response = await ai.models.generateContent({
-      model: "gemini-1.5-flash",
-      contents: [{ role: "user", parts: [{ text: prompt }] }]
-    });
+    const genAI = new GoogleGenAI(this.apiKey);
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const result = await model.generateContent(prompt);
     
-    return response.text || "";
+    return result.response.text() || "";
   }
 }
 
