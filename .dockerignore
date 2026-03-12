@@ -4,6 +4,4 @@ dist
 .git
 *.db
 *.log
-Dockerfile
-docker-compose.yml
 README.md
