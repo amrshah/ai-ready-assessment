@@ -78,8 +78,41 @@ export class GeminiProvider implements AIProvider {
   }
 }
 
+export class OllamaProvider implements AIProvider {
+  name = "Ollama";
+  private host = process.env.OLLAMA_HOST || "http://localhost:11434";
+  private model = process.env.OLLAMA_MODEL || "llama3";
+
+  async analyze(prompt: string): Promise<string> {
+    // For Docker environments to reach host Ollama, use host.docker.internal if not specified
+    let targetHost = this.host;
+    if (process.env.NODE_ENV === "production" && targetHost.includes("localhost")) {
+      targetHost = targetHost.replace("localhost", "host.docker.internal");
+    }
+
+    const response = await fetch(`${targetHost}/api/generate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: this.model,
+        prompt: prompt,
+        stream: false
+      })
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Ollama error: ${response.status} - ${errorText}`);
+    }
+
+    const data = await response.json();
+    return data.response || "";
+  }
+}
+
 export async function getAIAnalysis(prompt: string): Promise<string> {
   const providers: AIProvider[] = [
+    new OllamaProvider(),
     new SambaNovaProvider(),
     new OpenRouterProvider(),
     new GeminiProvider()
